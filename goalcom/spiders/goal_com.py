@@ -3,6 +3,47 @@ from dateutil.parser import parse
 from urlparse import urlparse
 import scrapy
 
+class GoalItem(scrapy.Item):
+    type = scrapy.Field()
+
+    name = scrapy.Field()
+    img_src = scrapy.Field()
+
+    goal_id = scrapy.Field()
+    goal_url = scrapy.Field()
+
+    wikipedia_page_id = scrapy.Field()
+    wikipedia_title = scrapy.Field()
+    wikipedia_summary = scrapy.Field()
+
+class League(GoalItem):
+    pass
+
+class Team(GoalItem):
+    pass
+
+class Player(GoalItem):
+    fullname = scrapy.Field()
+    nickname = scrapy.Field()
+    birthdate = scrapy.Field()
+    birthplace = scrapy.Field()
+    nationality = scrapy.Field()
+    height = scrapy.Field()
+    weight = scrapy.Field()
+    position = scrapy.Field()
+    squadnum = scrapy.Field()
+    national_team = scrapy.Field()
+
+class LeagueTeam(scrapy.Item):
+    type = scrapy.Field()
+    league_id = scrapy.Field()
+    team_id = scrapy.Field()
+
+class TeamPlayer(scrapy.Item):
+    type = scrapy.Field()
+    team_id = scrapy.Field()
+    player_id = scrapy.Field()
+
 class GoalComSpider(scrapy.Spider):
     name = 'goal.com'
     allowed_domains = ['goal.com']
@@ -22,12 +63,12 @@ class GoalComSpider(scrapy.Spider):
 
     def parse_league(self, response):
         league_id = response.meta['league_id']
-        league = {
-            'type': 'league',
-            'name': response.xpath('//header/h1/text()').extract_first(),
-            'goal_id': league_id,
-            'goal_url': response.url
-        }
+        league = League(
+            type = 'league',
+            name = response.xpath('//header/h1/text()').extract_first(),
+            goal_id = league_id,
+            goal_url = response.url
+        )
 
         # retrieve all the teams in the league
         test_xpath = '//table[@class="short"]/tbody[1]/tr[1]/td[4]/a/@href'
@@ -38,11 +79,11 @@ class GoalComSpider(scrapy.Spider):
             team_url = response.urljoin(team_url)
             team_id = id_from_url(team_url, 'team')
 
-            yield {
-                'type': 'league_team',
-                'league_id': league_id,
-                'team_id': team_id
-            }
+            yield LeagueTeam(
+                type = 'league_team',
+                league_id = league_id,
+                team_id = team_id
+            )
 
             request = scrapy.Request(url=team_url, callback=self.parse_team)
             request.meta['team_id'] = team_id
@@ -52,13 +93,13 @@ class GoalComSpider(scrapy.Spider):
 
     def parse_team(self, response):
         team_id = response.meta['team_id']
-        team = {
-            'type': 'team',
-            'name': response.xpath('//section[@class="team-badge"]//span[@class="team-name"]/text()').extract_first(),
-            'img_src': response.xpath('//section[@class="team-badge"]//span[@class="badge"]/img/@src').extract_first(),
-            'goal_id': team_id,
-            'goal_url': response.url
-        }
+        team = Team(
+            type = 'team',
+            name = response.xpath('//section[@class="team-badge"]//span[@class="team-name"]/text()').extract_first(),
+            img_src = response.xpath('//section[@class="team-badge"]//span[@class="badge"]/img/@src').extract_first(),
+            goal_id = team_id,
+            goal_url = response.url
+        )
 
         # retrieve all the players on the team
         test_xpath = '//table[@class="tab-squad tab-squad-players"]//tr[1]/td[@class="name"]/a/@href'
@@ -73,11 +114,11 @@ class GoalComSpider(scrapy.Spider):
             player_url = response.urljoin(player_url)
             player_id = id_from_url(player_url, 'player')
 
-            yield {
-                'type': 'team_player',
-                'team_id': team_id,
-                'player_id': player_id
-            }
+            yield TeamPlayer(
+                type = 'team_player',
+                team_id = team_id,
+                player_id = player_id
+            )
 
             request = scrapy.Request(url=player_url, callback=self.parse_player)
             request.meta['player_id'] = player_id
@@ -87,13 +128,13 @@ class GoalComSpider(scrapy.Spider):
 
     def parse_player(self, response):
         player_id = response.meta['player_id']
-        player = {
-            'type': 'player',
-            'name': response.xpath('//div[@id="playerStatsCard"]//tr/td[@class="playerName"]/text()').extract_first(),
-            'img_src': response.xpath('//img[@id="playerProfilePhoto"]/@src').extract_first(),
-            'goal_id': player_id,
-            'goal_url': response.url
-        }
+        player = Player(
+            type = 'player',
+            name = response.xpath('//div[@id="playerStatsCard"]//tr/td[@class="playerName"]/text()').extract_first(),
+            img_src = response.xpath('//img[@id="playerProfilePhoto"]/@src').extract_first(),
+            goal_id = player_id,
+            goal_url = response.url
+        )
 
         # don't bring in dummy player images
         if player['img_src'].find('images/default/dummy/goal.news.jpg') > -1:

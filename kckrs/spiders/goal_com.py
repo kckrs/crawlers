@@ -48,10 +48,6 @@ class GoalComSpider(scrapy.Spider):
     name = 'goal.com'
     allowed_domains = ['goal.com']
 
-    def start_requests(self):
-        
-        yield scrapy.Request(url='http://www.goal.com/en-us/tables/', callback=self.parse)
-
     def parse(self, response):
         test_xpath = '//table[@data-area-id="5"]/caption/a[@href="/en-us/tables/copa-libertadores/241"]/@href'
         full_xpath = '//table[@class="short"]/caption/a/@href'
